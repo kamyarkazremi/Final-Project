@@ -1,0 +1,259 @@
+/*
+ ============================================================================
+ Name        : project.c
+ Author      : Jiayi
+ Version     :
+ Copyright   : Your copyright notice
+ Description : Hello World in C, Ansi-style
+ ============================================================================
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include<stdbool.h>
+#include<ctype.h>
+typedef struct {
+  int studentID;
+	char FirstName[40];
+	char LastName[40];
+	int PhoneNumber;
+} STUDENT;
+typedef struct node {
+	STUDENT* dataPtr;
+	struct node* left;
+	struct node* right;
+} NODE;
+typedef struct {
+	int count;
+	int (*compare)(void*argu1, void*argu2);
+	NODE* root;
+} BST_TREE;
+BST_TREE * BST_Create(int (*compare)(void*argu1, void*argu2));
+BST_TREE * BST_Destroy(BST_TREE *tree);
+bool BST_Insert(BST_TREE *tree, void *dataPtr);
+bool BST_Delete(BST_TREE *tree, void *dltKey);
+void BST_Traverse(BST_TREE *tree, void (*process)(void*dataPtr));
+static NODE* _insert(BST_TREE *tree, NODE* root, NODE* newPtr);
+static NODE* _delete(BST_TREE *tree, NODE* root, void*dataPtr, bool*success);
+void _traverse(NODE* root, void (*process)(void* dataPtr));
+void _destroy(NODE* root);
+int getOption(void);
+void addStu(BST_TREE*list);
+void deleteStu(BST_TREE*list);
+void printList(BST_TREE*list);
+void processStu(void *StuPtr);
+int compareStu(void * stu1, void *stu2);
+int main(void) {
+	BST_TREE*list;
+	int option;
+	puts("Begin Student List\n");
+	list = BST_Create(compareStu);
+	while ((option = getOption()) != 4) {
+		switch (option){
+		case 1:
+			addStu(list);
+			break;
+		case 2:
+			deleteStu(list);
+			break;
+
+		case 3:
+			printList(list);
+
+			break;
+		}
+	}
+	printf("\nEnd student List");
+	return 0;
+}
+BST_TREE * BST_Create(int (*compare)(void*argu1, void*argu2)) {
+	BST_TREE * tree;
+	tree = (BST_TREE *) malloc(sizeof(BST_TREE));
+	if (tree) {
+		tree->root = NULL;
+		tree->count = 0;
+		tree->compare = compare;
+	}
+	return tree;
+}
+bool BST_Insert(BST_TREE *tree, void *dataPtr) {
+	NODE*newPtr;
+	newPtr = (NODE*) malloc(sizeof(NODE));
+	if (!newPtr)
+		return false;
+	newPtr->right = NULL;
+	newPtr->left = NULL;
+	newPtr->dataPtr = dataPtr;
+	if (tree->count == 0)
+		tree->root = newPtr;
+	else
+		_insert(tree, tree->root, newPtr);
+	(tree->count)++;
+	return true;
+}
+NODE* _insert(BST_TREE *tree, NODE* root, NODE* newPtr) {
+	if (!root)
+		return newPtr;
+	if (tree->compare(newPtr->dataPtr, root->dataPtr) < 0) {
+		root->left = _insert(tree, root->left, newPtr);
+		return root;
+	} else {
+		root->right = _insert(tree, root->right, newPtr);
+		return root;
+	}
+}
+bool BST_Delete(BST_TREE *tree, void *dltKey) {
+	bool success;
+	NODE*newRoot;
+	newRoot = _delete(tree, tree->root, dltKey, &success);
+	if (success) {
+		tree->root = newRoot;
+		(tree->count)--;
+		if (tree->count == 0) {
+			tree->root = NULL;
+		}
+	}
+	return success;
+}
+static NODE* _delete(BST_TREE *tree, NODE* root, void*dataPtr, bool*success) {
+	NODE*dltPtr;
+	NODE*exchPtr;
+	NODE*newRoot;
+	void*holdPtr;
+	if (!root) {
+		*success = false;
+		return NULL ;
+	}
+	if (tree->compare(dataPtr, root->dataPtr) < 0)
+		root->left = _delete(tree, root->left, dataPtr, success);
+	else if (tree->compare(dataPtr, root->dataPtr) > 0)
+		root->right = _delete(tree, root->right, dataPtr, success);
+	else {
+		dltPtr = root;
+		if (!root->left) {
+			free(root->dataPtr);
+			newRoot = root->right;
+			free(dltPtr);
+			*success = true;
+			return newRoot;
+		} else if (!root->right) {
+			newRoot = root->left;
+			free(dltPtr);
+			*success = true;
+			return newRoot;
+		} else {
+			exchPtr = root->left;
+			while (exchPtr->right)
+				exchPtr = exchPtr->right;
+			holdPtr = root->dataPtr;
+			root->dataPtr = exchPtr->dataPtr;
+			exchPtr->dataPtr = holdPtr;
+			root->left = _delete(tree, root->left, exchPtr->dataPtr, success);
+		}
+	}
+	return root;
+}
+void BST_Traverse(BST_TREE *tree, void (*process)(void*dataPtr)) {
+	_traverse(tree->root, process);
+	return;
+}
+void _traverse(NODE* root, void (*process)(void* dataPtr)) {
+	if (root) {
+		_traverse(root->left, process);
+		process(root->dataPtr);
+		_traverse(root->right, process);
+	}
+	return;
+}
+BST_TREE * BST_Destroy(BST_TREE *tree)
+{
+	if(tree)
+		_destroy(tree->root);
+	free(tree);
+	return NULL;
+}
+void _destroy(NODE* root)
+{
+	if(root)
+	{
+		_destroy(root->left);
+		free(root->dataPtr);
+		_destroy(root->right);
+		free(root);
+	}
+	return;
+}
+int getOption(void) {
+	int option;
+	bool error;
+	printf("        MENU        \n");
+	printf("1 :add student.\n");
+	printf("2 :delete student.\n");
+	printf("3 :print student list.\n");
+	printf("4 : Quit.\n");
+	do {
+		printf("\nEnter Option:");
+		scanf("%d", &option);
+		printf("current input = %d\n", option);
+		if (option == 1 || option == 2 || option == 3 || option == 4)
+			error = false;
+		else {
+			printf("Invalid Option. Please enter again:");
+			error = true;
+		}
+	} while (error == true);
+	printf("current input = %d\n", option);
+	return option;
+}
+void addStu(BST_TREE*list) {
+	STUDENT *stuPtr;
+	stuPtr = (STUDENT *) malloc(sizeof(STUDENT));
+	if (!stuPtr)
+		printf("Memory overFlow\n"), exit(101);
+	else {
+		printf("Enter studentID:  ");
+		scanf("%d", &(stuPtr->studentID));
+		printf("FirstName Please:  ");
+		scanf("%s", stuPtr->FirstName);
+		printf("LastName Please:  ");
+		scanf("%s", stuPtr->LastName);
+		printf("PhoneNumber Please:  ");
+		scanf("%d", &(stuPtr->PhoneNumber));
+		BST_Insert(list, stuPtr);
+	}
+}
+void deleteStu(BST_TREE*list) {
+	int id;
+	int *idPtr = &id;
+	printf("Please enter the studentId which you want to delete:");
+	scanf("%d", idPtr);
+	if (!BST_Delete(list, idPtr)) {
+		printf("No student for this ID");
+	} else {
+		printf("You already delete it!");
+	}
+}
+void printList(BST_TREE*list) {
+	printf("\nStudent List:\n");
+	BST_Traverse(list, processStu);
+	printf("End\n");
+	return;
+}
+void processStu(void *StuPtr) {
+	STUDENT aStu;
+	aStu = *(STUDENT*) StuPtr;
+	printf("%04d  %-40s %-40s  %d", aStu.studentID, aStu.FirstName,
+			aStu.LastName, aStu.PhoneNumber);
+	return;
+}
+int compareStu(void * stu1, void *stu2) {
+	STUDENT s1;
+	STUDENT s2;
+	s1 = *(STUDENT*) stu1;
+	s2 = *(STUDENT*) stu2;
+	if (s1.studentID < s2.studentID)
+		return -1;
+	if (s1.studentID == s2.studentID)
+		return 0;
+	return +1;
+}
